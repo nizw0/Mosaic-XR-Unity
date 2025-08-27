@@ -81,11 +81,11 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7913708705614608778}
-  - component: {fileID: 2681575481727882275}
-  - component: {fileID: 2184060436030677583}
-  - component: {fileID: 4976470222712890361}
+  - component: {fileID: 3646498784595741499}
+  - component: {fileID: 5770685633180165650}
+  - component: {fileID: 7998114026059820840}
   m_Layer: 0
-  m_Name: SentisInferenceManagerPrefab
+  m_Name: WebRTCInferenceManagerPrefab
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -107,7 +107,7 @@ Transform:
   - {fileID: 7341598050606267497}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2681575481727882275
+--- !u!114 &3646498784595741499
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -116,19 +116,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 5228241647023865434}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9a85fc80cf14595479bd0967c6f46dc2, type: 3}
+  m_Script: {fileID: 11500000, guid: 23da58d43435e9542b63412d80549ef6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_inputSize: {x: 640, y: 640}
-  m_backend: 512
-  m_sentisModel: {fileID: 5022602860645237092, guid: 69ab50aef18ae412cac4b305492d527c, type: 3}
-  m_layersPerFrame: 39
-  m_labelsAsset: {fileID: 4900000, guid: c01c64149c7930b45a76559caabd5c78, type: 3}
-  m_uiInference: {fileID: 2184060436030677583}
-  OnnxModel: {fileID: 5022602860645237092, guid: e61826a46beb24bb380fd628c56eacaa, type: 3}
-  m_iouThreshold: 0.55
-  m_scoreThreshold: 0.32
---- !u!114 &2184060436030677583
+  m_webCamTextureManager: {fileID: 0}
+  m_image: {fileID: 144095598799144303}
+  m_inferenceInterval: 0.1
+  SIGNALING_URL: https://140.113.24.246:8080/offer
+  SIGNALING_ICE_URL: https://140.113.24.246:8080/candidate
+--- !u!114 &5770685633180165650
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -137,34 +133,24 @@ MonoBehaviour:
   m_GameObject: {fileID: 5228241647023865434}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ad237abe1df8fba4da80d86f3cb45a6b, type: 3}
+  m_Script: {fileID: 11500000, guid: 57c855b1baca6f140ac93a4d3ed367b4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_webRTCSessionManager: {fileID: 3646498784595741499}
+  m_labelsAsset: {fileID: 0}
   m_environmentRaycast: {fileID: 0}
   m_webCamTextureManager: {fileID: 0}
-  m_detectionCanvas: {fileID: 4976470222712890361}
+  m_detectionCanvas: {fileID: 7998114026059820840}
   m_displayImage: {fileID: 144095598799144303}
   m_boxTexture: {fileID: 10911, guid: 0000000000000000f000000000000000, type: 0}
-  m_boxColor: {r: 0.36078432, g: 0.99215686, b: 0.60784316, a: 0.60784316}
+  m_boxColor: {r: 0.36078432, g: 0.99215686, b: 0.60784316, a: 0}
   m_font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
-  m_fontColor: {r: 0.36078432, g: 0.99215686, b: 0.6039216, a: 1}
+  m_fontColor: {r: 0.36078432, g: 0.99215686, b: 0.60784316, a: 0}
   m_fontSize: 80
   OnObjectsDetected:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: ScannerUiMenuManager, Assembly-CSharp
-        m_MethodName: OnObjectsDetected
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
---- !u!114 &4976470222712890361
+      m_Calls: []
+--- !u!114 &7998114026059820840
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -173,12 +159,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 5228241647023865434}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d8c536e29614c424c829f1696492a0a3, type: 3}
+  m_Script: {fileID: 11500000, guid: 7f4e722c0ec19c840bfba1f1bc473257, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   m_webCamTextureManager: {fileID: 0}
   m_detectionCanvas: {fileID: 7376517437398570920}
-  m_canvasDistance: 0.92
+  m_canvasDistance: 1
 --- !u!1 &7376517437398570920
 GameObject:
   m_ObjectHideFlags: 0

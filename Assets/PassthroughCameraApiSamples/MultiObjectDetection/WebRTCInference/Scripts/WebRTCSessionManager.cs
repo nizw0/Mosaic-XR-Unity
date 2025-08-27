@@ -7,40 +7,71 @@ using UnityEngine.Networking;
 using Newtonsoft.Json;
 using UnityEngine.UI;
 
-[Serializable]
-public class SDPExchange
-{
-    public string Sdp;
-    public string Type;
-}
-[Serializable]
-public class IceCandidateExchange
-{
-    public string Candidate;
-    public string SdpMid;
-    public int SdpMLineIndex;
-}
-
 namespace PassthroughCameraSamples.MultiObjectDetection
 {
-    public class WebRTCClientManager : MonoBehaviour
+    public class WebRTCSessionManager : MonoBehaviour
     {
         [SerializeField] private WebCamTextureManager m_webCamTextureManager;
         [SerializeField] private RawImage m_image;
-        [SerializeField] private float m_inferenceInterval = 0.5f;
+        // [SerializeField] private float m_inferenceInterval = 0.5f;
+        [SerializeField] private string SIGNALING_URL = "https://140.113.24.246:8080/offer";
+        [SerializeField] private string SIGNALING_ICE_URL = "https://140.113.24.246:8080/candidate";
+        public event Action<byte[]> OnInferenceResultReceived;
+        public bool IsConnected => m_peer != null && m_peer.ConnectionState == RTCPeerConnectionState.Connected;
         private WebCamTexture m_webCamTexture;
         private RenderTexture m_renderTexture;
         private VideoStreamTrack m_videoTrack;
         private RTCPeerConnection m_peer;
         private RTCDataChannel m_dataChannel;
 
-        public event Action<byte[]> OnInferenceResultReceived;
+        #region Unity Functions
+        private IEnumerator Start()
+        {
+            Debug.Log("[WebRTC] Starting WebRTC client.");
+            var timeoutSeconds = 10.0f;
+            var elapsedTime = 0f;
 
-        private const string SIGNALING_URL = "https://140.113.24.246:8080/offer";
-        private const string SIGNALING_ICE_URL = "https://140.113.24.246:8080/candidate";
+            while (m_webCamTextureManager.WebCamTexture == null)
+            {
+                yield return null;
+                if (elapsedTime > timeoutSeconds)
+                {
+                    Debug.LogError("[WebRTC] Timeout waiting for WebCamTextureManager initialization.");
+                    yield break;
+                }
+                elapsedTime += Time.deltaTime;
+            }
 
+            _ = StartCoroutine(WebRTC.Update());
+            Debug.Log("[WebRTC] WebCamTextureManager initialized successfully.");
 
+            Debug.Log("[WebRTC] Starting InitConnection...");
+            _ = StartCoroutine(InitConnection());
+        }
 
+        private void Update()
+        {
+            if (PassthroughCameraPermissions.HasCameraPermission != true)
+            {
+                Debug.LogError("[WebRTC] No camera permission granted.");
+            }
+
+            if (m_peer != null && m_peer.ConnectionState == RTCPeerConnectionState.Disconnected)
+            {
+                Debug.Log("[WebRTC] Peer connection disconnected.");
+            }
+        }
+
+        private void OnDestroy()
+        {
+            m_peer.Close();
+            m_dataChannel.Close();
+            m_videoTrack.Dispose();
+            m_renderTexture.Release();
+        }
+        #endregion
+
+        #region WebRTC Functions
         private IEnumerator InitConnection()
         {
             Debug.Log("[WebRTC] Init connection.");
@@ -263,36 +294,6 @@ namespace PassthroughCameraSamples.MultiObjectDetection
             Debug.Log("[WebRTC] Answer sent successfully to server");
         }
 
-        private void SendImageForInference(byte[] imageBytes)
-        {
-            if (m_dataChannel != null && m_dataChannel.ReadyState == RTCDataChannelState.Open)
-            {
-                try
-                {
-                    m_dataChannel.Send(imageBytes);
-                    Debug.Log($"[WebRTC] Image sent successfully, size: {imageBytes.Length} bytes");
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError($"[WebRTC] Failed to send image: {e.Message}");
-                }
-            }
-            else
-            {
-                Debug.LogWarning("[WebRTC] DataChannel not open yet, state: " +
-                    (m_dataChannel != null ? m_dataChannel.ReadyState.ToString() : "null"));
-            }
-        }
-        private void OnMessageReceived(byte[] bytes)
-        {
-            Debug.Log("[WebRTC] OnMessageReceived called");
-            var json = Encoding.UTF8.GetString(bytes);
-            Debug.Log($"[WebRTC] Inference result received from server: {json}");
-
-            OnInferenceResultReceived?.Invoke(bytes);
-        }
-
-
         private IEnumerator CopyWebcamToRenderTexture(WebCamTexture source, RenderTexture target)
         {
             Debug.Log("[WebRTC] Copy coroutine started.");
@@ -313,6 +314,36 @@ namespace PassthroughCameraSamples.MultiObjectDetection
             }
         }
 
+        private void SendImageForInference(byte[] imageBytes)
+        {
+            if (m_dataChannel != null && m_dataChannel.ReadyState == RTCDataChannelState.Open)
+            {
+                try
+                {
+                    m_dataChannel.Send(imageBytes);
+                    Debug.Log($"[WebRTC] Image sent successfully, size: {imageBytes.Length} bytes");
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"[WebRTC] Failed to send image: {e.Message}");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("[WebRTC] DataChannel not open yet, state: " +
+                    (m_dataChannel != null ? m_dataChannel.ReadyState.ToString() : "null"));
+            }
+        }
+
+        private void OnMessageReceived(byte[] bytes)
+        {
+            Debug.Log("[WebRTC] OnMessageReceived called");
+            var json = Encoding.UTF8.GetString(bytes);
+            Debug.Log($"[WebRTC] Inference result received from server: {json}");
+
+            OnInferenceResultReceived?.Invoke(bytes);
+        }
+
         private class BypassCertificate : CertificateHandler
         {
             protected override bool ValidateCertificate(byte[] certificate)
@@ -320,52 +351,20 @@ namespace PassthroughCameraSamples.MultiObjectDetection
                 return true;
             }
         }
+        #endregion
+    }
 
-        private IEnumerator Start()
-        {
-            Debug.Log("[WebRTC] Starting WebRTC client.");
-            var timeoutSeconds = 10.0f;
-            var elapsedTime = 0f;
-
-            while (m_webCamTextureManager.WebCamTexture == null)
-            {
-                yield return null;
-                if (elapsedTime > timeoutSeconds)
-                {
-                    Debug.LogError("[WebRTC] Timeout waiting for WebCamTextureManager initialization.");
-                    yield break;
-                }
-                elapsedTime += Time.deltaTime;
-            }
-
-            _ = StartCoroutine(WebRTC.Update());
-
-            Debug.Log("[WebRTC] WebCamTextureManager initialized successfully.");
-            Debug.Log("[WebRTC] Starting InitConnection...");
-            _ = StartCoroutine(InitConnection());
-
-        }
-
-        private void Update()
-        {
-            if (PassthroughCameraPermissions.HasCameraPermission != true)
-            {
-                Debug.LogError("[WebRTC] No camera permission granted.");
-            }
-
-            if (m_peer != null && m_peer.ConnectionState == RTCPeerConnectionState.Disconnected)
-            {
-                Debug.Log("[WebRTC] Peer connection disconnected.");
-            }
-        }
-
-        private void OnDestroy()
-        {
-            m_peer.Close();
-            m_dataChannel.Close();
-            m_videoTrack.Dispose();
-            m_renderTexture.Release();
-        }
-
+    [Serializable]
+    public class SDPExchange
+    {
+        public string Sdp;
+        public string Type;
+    }
+    [Serializable]
+    public class IceCandidateExchange
+    {
+        public string Candidate;
+        public string SdpMid;
+        public int SdpMLineIndex;
     }
 }

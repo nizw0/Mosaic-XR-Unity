@@ -1,80 +1,234 @@
-person
-bicycle
-car
-motorbike
-aeroplane
-bus
-train
-truck
-boat
-traffic light
-fire hydrant
-stop sign
-parking meter
-bench
-bird
-cat
-dog
-horse
-sheep
-cow
-elephant
-bear
-zebra
-giraffe
-backpack
-umbrella
-handbag
-tie
-suitcase
-frisbee
-skis
-snowboard
-sports ball
-kite
-baseball bat
-baseball glove
-skateboard
-surfboard
-tennis racket
-bottle
-wine glass
-cup
-fork
-knife
-spoon
-bowl
-banana
-apple
-sandwich
-orange
-broccoli
-carrot
-hot dog
-pizza
-donut
-cake
-chair
-sofa
-pottedplant
-bed
-diningtable
-toilet
-tvmonitor
-laptop
-mouse
-remote
-keyboard
-cell phone
-microwave
-oven
-toaster
-sink
-refrigerator
-book
-clock
-vase
-scissors
-teddy bear
-hair drier
-toothbrush
+Andorra
+Lesotho
+Lithuania
+Nauru
+New Zealand
+Palau
+Saudi Arabia
+Afghanistan
+South Africa
+Egypt
+Iceland
+Aland islands
+Albania
+Algeria
+United states
+India
+Andorra
+Angola
+Angola
+Anguilla
+United Kingdom
+Austria
+Arabia
+Argentina
+Armenia
+the Association of Southeast Asian
+Australia
+Azerbaijan
+Poland
+South Vietnam
+North Macedonia
+Bahrain
+Bangladesh
+Belarus
+Benin
+Bhutan
+Belgium
+Ivory coast
+Portugal
+Bolivia
+Bosnia Herzegovina
+Bosnia-Herzegovina
+Botswana
+Brazil
+Brunei
+Bulgaria
+Burkina Faso
+Burundi
+United Arab Emirates
+Cambodia
+Cambodia
+Cameroon
+Cambodia
+Canada
+Cape Verde
+Trinidad and Tobago
+Ireland
+Czech Republic
+Chad
+Chile
+China
+the Association of Southeast Asian
+Colombia
+Comoros
+Congo
+Gabon
+Mozambique
+the Czech Republic
+Slovakia
+Togo
+Central African Republic
+Costa Rica
+Ivory coast
+Croatia
+Cuba
+Taiwan
+Denmark
+Djibouti
+Djibouti
+Seychelles
+East Timor
+Germany
+Egypt
+Eritrea
+Estonia
+Ethiopia
+Europe
+Faroe Islands
+Fiji
+Gambia
+Georgia
+Ghana
+Grenada
+guinea
+Guinea-Bissau
+Equatorial Guinea
+Guyana
+Netherlands
+Haiti
+South Korea
+Hong Kong
+Hungary
+Greece
+Iceland
+India
+Indonesia
+Iraq
+Iran
+Iraq
+Ireland
+Israel
+Jordan
+Democratic Kampuchea
+Kazakhstan
+Kenya
+Kiribati
+Kosovo
+Kurdistan
+Kuwait
+Kyrgyzstan
+srilanka
+Laos
+Latvia
+Lebanon
+Libya
+Liberia
+Libya
+Liechtenstein
+Micronesia
+Luxembourg
+maroc
+Madagascar
+Malawi
+Malaysia
+Maldives
+mali
+malta
+marshall_islands
+mauritania
+mauritius
+mexico
+moldova
+monaco
+monaco_indonesia
+Mongolia
+mongolia
+montenegro
+mozambique
+United state
+myanmar
+Norway
+south africa
+sudan
+yemen
+namibia
+nepal
+new-
+new_zealand
+russia
+japan
+niger
+nigeria
+oman
+pakistan
+palestine
+papua_new_guinea
+peru
+finland
+france
+philippines
+pitcairn
+Isle of Man
+Solomon Islands
+quatar
+romania
+romania-
+romania_chad
+russia
+rwanda
+sahara
+samoa
+san_marino
+san_mario
+sao_tome
+scotland
+senegal
+serbia
+seychelles
+sierra_leone
+singapore
+thiland
+slovakia
+slovenia
+solomon
+somalia
+srilanka
+sudan
+suriname
+swaziland
+syria
+tajikistan
+tanzania
+spain
+thailand
+turkey
+sweden
+switzerland
+togo
+tonga
+North Korea
+China
+tunisia
+turkey
+turkmeinstan
+turky
+tuvalu
+United Arab Emirates
+Australia
+United Arab Emirates
+uganda
+ukraina
+uruguay
+uzbekistan
+vanuatu
+vatican
+venezuela
+viet_nam
+vietnam
+wales
+welsh
+italy
+yemen
+zambia
+zimbabwe

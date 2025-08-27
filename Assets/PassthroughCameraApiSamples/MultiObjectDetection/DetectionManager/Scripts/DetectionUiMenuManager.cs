@@ -40,9 +40,9 @@ namespace PassthroughCameraSamples.MultiObjectDetection
             m_initialPanel.SetActive(false);
             m_noPermissionPanel.SetActive(false);
             m_loadingPanel.SetActive(true);
-            // Wait until Sentis model is loaded
-            var sentisInference = FindFirstObjectByType<SentisInferenceRunManager>();
-            while (!sentisInference.IsModelLoaded)
+            // Wait until WebRTC session is connected
+            var webRTCSession = FindFirstObjectByType<WebRTCSessionManager>();
+            while (webRTCSession == null || !webRTCSession.IsConnected)
             {
                 yield return null;
             }

@@ -1,24 +1,30 @@
-// Copyright (c) Meta Platforms, Inc. and affiliates.
-
 using System.Collections.Generic;
 using Meta.XR.Samples;
 using Unity.Sentis;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
+using System;
+using System.Collections;
+using System.Text;
+using Meta.XR;
 
 namespace PassthroughCameraSamples.MultiObjectDetection
 {
     [MetaCodeSample("PassthroughCameraApiSamples-MultiObjectDetection")]
-    public class SentisInferenceUiManager : MonoBehaviour
+    public class WebRTCInferenceUiManager : MonoBehaviour
     {
+        [Header("WebRTC")]
+        [SerializeField] private WebRTCSessionManager m_webRTCSessionManager;
+        [SerializeField] private TextAsset m_labelsAsset;
+
         [Header("Placement configureation")]
         [SerializeField] private EnvironmentRayCastSampleManager m_environmentRaycast;
         [SerializeField] private WebCamTextureManager m_webCamTextureManager;
         private PassthroughCameraEye CameraEye => m_webCamTextureManager.Eye;
 
         [Header("UI display references")]
-        [SerializeField] private SentisObjectDetectedUiManager m_detectionCanvas;
+        [SerializeField] private WebRTCObjectDetectedUiManager m_detectionCanvas;
         [SerializeField] private RawImage m_displayImage;
         [SerializeField] private Sprite m_boxTexture;
         [SerializeField] private Color m_boxColor;
@@ -26,6 +32,11 @@ namespace PassthroughCameraSamples.MultiObjectDetection
         [SerializeField] private Color m_fontColor;
         [SerializeField] private int m_fontSize = 80;
         [Space(10)]
+        [Header("Box Auto Hide Settings")]
+        [SerializeField] private float m_boxAutoHideDelay = 3.0f; // 3秒後自動隱藏
+
+        private Coroutine m_autoHideCoroutine;
+        private float m_lastDetectionTime;
         public UnityEvent<int> OnObjectsDetected;
 
         public List<BoundingBox> BoxDrawn = new();
@@ -44,12 +55,50 @@ namespace PassthroughCameraSamples.MultiObjectDetection
             public string Label;
             public Vector3? WorldPos;
             public string ClassName;
+            public int Confidence;
         }
 
         #region Unity Functions
         private void Start()
         {
+            // Initialize labels first
+            if (m_labelsAsset != null)
+            {
+                SetLabels(m_labelsAsset);
+            }
+            else
+            {
+                Debug.LogError("[WebRTCUI] m_labelsAsset is not assigned in inspector");
+                m_labels = new string[] { "unknown" };
+            }
+
             m_displayLocation = m_displayImage.transform;
+
+            if (m_webRTCSessionManager != null)
+            {
+                m_webRTCSessionManager.OnInferenceResultReceived += HandleInferenceResult;
+            }
+            else
+            {
+                Debug.LogError("[WebRTCUI] m_webRTCSessionManager is null in Start()");
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (m_webRTCSessionManager != null)
+            {
+                m_webRTCSessionManager.OnInferenceResultReceived -= HandleInferenceResult;
+            }
+
+            // 停止自動隱藏協程
+            if (m_autoHideCoroutine != null)
+            {
+                StopCoroutine(m_autoHideCoroutine);
+                m_autoHideCoroutine = null;
+            }
+
+            ClearAnnotations();
         }
         #endregion
 
@@ -62,13 +111,147 @@ namespace PassthroughCameraSamples.MultiObjectDetection
             // Set obejct found to 0
             OnObjectsDetected?.Invoke(0);
         }
+
+        private void HandleInferenceResult(byte[] data)
+        {
+            Debug.Log($"[WebRTCUI] HandleInferenceResult called with {data.Length} bytes");
+
+            try
+            {
+                var jsonString = Encoding.UTF8.GetString(data);
+                Debug.Log($"[WebRTCUI] Received inference result: {jsonString}");
+
+                // Clear previous detections
+                ClearAnnotations();
+
+                bool hasDetections = false; // 新增標記
+
+                // Parse JSON array manually or use JsonUtility with wrapper
+                if (jsonString.StartsWith("["))
+                {
+                    // Remove brackets and split by objects
+                    jsonString = jsonString.Trim('[', ']');
+                    var detectionStrings = SplitJsonObjects(jsonString);
+
+                    Debug.Log($"[WebRTCUI] Found {detectionStrings.Length} detections");
+
+                    if (detectionStrings.Length > 0)
+                    {
+                        var output = new List<float[]>();
+                        var labelIDs = new List<int>();
+
+                        foreach (var detection in detectionStrings)
+                        {
+                            var result = JsonUtility.FromJson<DetectionResult>(detection);
+                            output.Add(new float[] { result.x, result.y, result.width, result.height });
+                            labelIDs.Add(result.class_id);
+                        }
+
+                        int rows = output.Count;
+                        int cols = 4;
+                        float[,] outputArray = new float[rows, cols];
+                        for (int i = 0; i < rows; i++)
+                        {
+                            for (int j = 0; j < cols; j++)
+                            {
+                                outputArray[i, j] = output[i][j];
+                            }
+                        }
+
+                        // Draw UI boxes
+                        if (m_displayImage != null && m_displayImage.rectTransform != null)
+                        {
+                            SetDetectionCapture(m_displayImage.texture);
+
+                            // 有偵測到物件，更新最後偵測時間
+                            m_lastDetectionTime = Time.time;
+                            hasDetections = true;
+
+                            // 停止自動隱藏協程（如果正在執行）
+                            if (m_autoHideCoroutine != null)
+                            {
+                                StopCoroutine(m_autoHideCoroutine);
+                                m_autoHideCoroutine = null;
+                            }
+
+                            DrawUIBoxes(outputArray, labelIDs.ToArray(), m_displayImage.rectTransform.rect.width, m_displayImage.rectTransform.rect.height);
+                        }
+                        else
+                        {
+                            Debug.LogError("[WebRTCUI] m_displayImage or rectTransform is null");
+                            OnObjectDetectionError();
+                        }
+                    }
+                }
+                else if (jsonString.Contains("msg"))
+                {
+                    // This is a test message, ignore it
+                    Debug.Log("[WebRTCUI] Received test message, ignoring");
+                    return; // 直接返回，不處理自動隱藏
+                }
+
+                // 檢查是否有偵測結果，沒有則啟動自動隱藏
+                if (!hasDetections)
+                {
+                    Debug.Log("[WebRTCUI] No detections found, starting auto-hide timer");
+                    StartAutoHideBoxes();
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[WebRTCUI] Error handling inference result: {e.Message}");
+                OnObjectDetectionError();
+            }
+        }
+
+        private string[] SplitJsonObjects(string json)
+        {
+            var objects = new List<string>();
+            var braceCount = 0;
+            var startIndex = 0;
+
+            for (var i = 0; i < json.Length; i++)
+            {
+                if (json[i] == '{')
+                {
+                    if (braceCount == 0) startIndex = i;
+                    braceCount++;
+                }
+                else if (json[i] == '}')
+                {
+                    braceCount--;
+                    if (braceCount == 0)
+                    {
+                        objects.Add(json.Substring(startIndex, i - startIndex + 1));
+                    }
+                }
+            }
+            return objects.ToArray();
+        }
         #endregion
 
         #region BoundingBoxes functions
         public void SetLabels(TextAsset labelsAsset)
         {
+            if (labelsAsset == null || string.IsNullOrEmpty(labelsAsset.text))
+            {
+                Debug.LogError("[WebRTCUI] labelsAsset is null or empty");
+                m_labels = new string[] { "unknown" };
+                return;
+            }
+
             //Parse neural net m_labels
             m_labels = labelsAsset.text.Split('\n');
+
+            if (m_labels == null || m_labels.Length == 0)
+            {
+                Debug.LogError("[WebRTCUI] Failed to parse labels from asset");
+                m_labels = new string[] { "unknown" };
+            }
+            else
+            {
+                Debug.Log($"[WebRTCUI] Loaded {m_labels.Length} labels");
+            }
         }
 
         public void SetDetectionCapture(Texture image)
@@ -77,8 +260,35 @@ namespace PassthroughCameraSamples.MultiObjectDetection
             m_detectionCanvas.CapturePosition();
         }
 
-        public void DrawUIBoxes(Tensor<float> output, Tensor<int> labelIDs, float imageWidth, float imageHeight)
+        public void DrawUIBoxes(float[,] output, int[] labelIDs, float imageWidth, float imageHeight)
         {
+            Debug.Log($"[WebRTCUI] DrawUIBoxes called with {output.GetLength(0)} detections, imageSize: {imageWidth}x{imageHeight}");
+
+            // Check for null references
+            if (m_detectionCanvas == null)
+            {
+                Debug.LogError("[WebRTCUI] m_detectionCanvas is null");
+                return;
+            }
+
+            if (m_displayImage == null || m_displayImage.rectTransform == null)
+            {
+                Debug.LogError("[WebRTCUI] m_displayImage or rectTransform is null in DrawUIBoxes");
+                return;
+            }
+
+            if (m_webCamTextureManager == null)
+            {
+                Debug.LogError("[WebRTCUI] m_webCamTextureManager is null");
+                return;
+            }
+
+            if (m_labels == null || m_labels.Length == 0)
+            {
+                Debug.LogError("[WebRTCUI] m_labels is null or empty");
+                return;
+            }
+
             // Updte canvas position
             m_detectionCanvas.UpdatePosition();
 
@@ -87,14 +297,17 @@ namespace PassthroughCameraSamples.MultiObjectDetection
 
             var displayWidth = m_displayImage.rectTransform.rect.width;
             var displayHeight = m_displayImage.rectTransform.rect.height;
+            Debug.Log($"[WebRTCUI] Display size: {displayWidth}x{displayHeight}");
 
             var scaleX = displayWidth / imageWidth;
             var scaleY = displayHeight / imageHeight;
+            Debug.Log($"[WebRTCUI] Scale factors: X={scaleX}, Y={scaleY}");
 
             var halfWidth = displayWidth / 2;
             var halfHeight = displayHeight / 2;
 
-            var boxesFound = output.shape[0];
+            // var boxesFound = output.shape[0];
+            var boxesFound = output.GetLength(0);
             if (boxesFound <= 0)
             {
                 OnObjectsDetected?.Invoke(0);
@@ -102,6 +315,7 @@ namespace PassthroughCameraSamples.MultiObjectDetection
             }
             var maxBoxes = Mathf.Min(boxesFound, 200);
 
+            Debug.Log($"[WebRTCUI] Drawing {maxBoxes} boxes");
             OnObjectsDetected?.Invoke(maxBoxes);
 
             //Get the camera intrinsics
@@ -111,14 +325,28 @@ namespace PassthroughCameraSamples.MultiObjectDetection
             //Draw the bounding boxes
             for (var n = 0; n < maxBoxes; n++)
             {
+                Debug.Log($"[WebRTCUI] Processing detection {n}: raw coords({output[n, 0]}, {output[n, 1]}, {output[n, 2]}, {output[n, 3]}), class_id: {labelIDs[n]}");
+
                 // Get bounding box center coordinates
                 var centerX = output[n, 0] * scaleX - halfWidth;
                 var centerY = output[n, 1] * scaleY - halfHeight;
                 var perX = (centerX + halfWidth) / displayWidth;
                 var perY = (centerY + halfHeight) / displayHeight;
 
+                Debug.Log($"[WebRTCUI] Canvas coords: centerX={centerX}, centerY={centerY}, perX={perX}, perY={perY}");
+
                 // Get object class name
-                var classname = m_labels[labelIDs[n]].Replace(" ", "_");
+                string classname = "unknown";
+                if (labelIDs[n] >= 0 && labelIDs[n] < m_labels.Length && !string.IsNullOrEmpty(m_labels[labelIDs[n]]))
+                {
+                    classname = m_labels[labelIDs[n]].Replace(" ", "_");
+                }
+                else
+                {
+                    Debug.LogWarning($"[WebRTCUI] Invalid label ID: {labelIDs[n]}, using 'unknown'");
+                }
+
+                Debug.Log($"[WebRTCUI] Object class: {classname}");
 
                 // Get the 3D marker world position using Depth Raycast
                 var centerPixel = new Vector2Int(Mathf.RoundToInt(perX * camRes.x), Mathf.RoundToInt((1.0f - perY) * camRes.y));
@@ -156,6 +384,8 @@ namespace PassthroughCameraSamples.MultiObjectDetection
 
         private void DrawBox(BoundingBox box, int id)
         {
+            Debug.Log($"[WebRTCUI] DrawBox called for box {id}: Center({box.CenterX}, {box.CenterY}), Size({box.Width}, {box.Height}), Class: {box.ClassName}");
+
             //Create the bounding box graphic or get from pool
             GameObject panel;
             if (id < m_boxPool.Count)
@@ -174,17 +404,41 @@ namespace PassthroughCameraSamples.MultiObjectDetection
             {
                 panel = CreateNewBox(m_boxColor);
             }
-            //Set box position
-            panel.transform.localPosition = new Vector3(box.CenterX, -box.CenterY, box.WorldPos.HasValue ? box.WorldPos.Value.z : 0.0f);
+
+            if (panel == null)
+            {
+                Debug.LogError("[WebRTCUI] Failed to create or get panel for box");
+                return;
+            }
+
+            if (m_detectionCanvas == null)
+            {
+                Debug.LogError("[WebRTCUI] m_detectionCanvas is null in DrawBox");
+                return;
+            }
+
+            // Debug panel creation
+            Debug.Log($"[WebRTCUI] Panel created/retrieved: {panel.name}, Active: {panel.activeInHierarchy}");
+
+            //Set box position - Use 2D canvas coordinates, not 3D world position
+            var finalPosition = new Vector3(box.CenterX, -box.CenterY, box.WorldPos.HasValue ? box.WorldPos.Value.z : 0.0f);
+            panel.transform.localPosition = finalPosition;
+            Debug.Log($"[WebRTCUI] Panel position set to: {finalPosition}");
+
             //Set box rotation
             panel.transform.rotation = Quaternion.LookRotation(panel.transform.position - m_detectionCanvas.GetCapturedCameraPosition());
             //Set box size
             var rt = panel.GetComponent<RectTransform>();
             rt.sizeDelta = new Vector2(box.Width, box.Height);
+            Debug.Log($"[WebRTCUI] Box size set to: {box.Width} x {box.Height}");
+
             //Set label text
             var label = panel.GetComponentInChildren<Text>();
             label.text = box.Label;
             label.fontSize = 12;
+
+            // Final verification
+            Debug.Log($"[WebRTCUI] Final panel state - Active: {panel.activeInHierarchy}, Position: {panel.transform.position}, LocalPosition: {panel.transform.localPosition}");
         }
 
         private GameObject CreateNewBox(Color color)
@@ -221,5 +475,42 @@ namespace PassthroughCameraSamples.MultiObjectDetection
             return panel;
         }
         #endregion
+
+        #region Auto Hide Functions
+        private void StartAutoHideBoxes()
+        {
+            // 如果已經有協程在執行，就不重複啟動
+            if (m_autoHideCoroutine != null) return;
+
+            m_autoHideCoroutine = StartCoroutine(AutoHideBoxesAfterDelay());
+        }
+
+        private IEnumerator AutoHideBoxesAfterDelay()
+        {
+            Debug.Log($"[WebRTCUI] Starting auto-hide timer for {m_boxAutoHideDelay} seconds");
+
+            yield return new WaitForSeconds(m_boxAutoHideDelay);
+
+            // 檢查是否在等待期間又有新的偵測結果
+            if (Time.time - m_lastDetectionTime >= m_boxAutoHideDelay)
+            {
+                Debug.Log("[WebRTCUI] Auto-hiding boxes due to no detection");
+                ClearAnnotations();
+                OnObjectsDetected?.Invoke(0);
+            }
+
+            m_autoHideCoroutine = null;
+        }
+        #endregion
+    }
+
+    public class DetectionResult
+    {
+        public float x;
+        public float y;
+        public float width;
+        public float height;
+        public float confidence;
+        public int class_id;
     }
 }

@@ -25,16 +25,22 @@ namespace PassthroughCameraSamples.MultiObjectDetection
         [SerializeField] private float m_spawnDistance = 0.25f;
         [SerializeField] private AudioSource m_placeSound;
 
-        [Header("Sentis inference ref")]
-        [SerializeField] private SentisInferenceRunManager m_runInference;
-        [SerializeField] private SentisInferenceUiManager m_uiInference;
+        // [Header("Sentis inference ref")]
+        // [SerializeField] private SentisInferenceRunManager m_runInference;
+        // [SerializeField] private SentisInferenceUiManager m_uiInference;
+        // [Space(10)]
+
+        [Header("WebRTC inference ref")]
+        [SerializeField] private WebRTCSessionManager m_session;
+        [SerializeField] private WebRTCInferenceUiManager m_uiInference;
         [Space(10)]
+
         public UnityEvent<int> OnObjectsIdentified;
 
         private bool m_isPaused = true;
         private List<GameObject> m_spwanedEntities = new();
         private bool m_isStarted = false;
-        private bool m_isSentisReady = false;
+        // private bool m_isSentisReady = false;
         private float m_delayPauseBackTime = 0;
 
         #region Unity Functions
@@ -42,13 +48,11 @@ namespace PassthroughCameraSamples.MultiObjectDetection
 
         private IEnumerator Start()
         {
-            // Wait until Sentis model is loaded
-            var sentisInference = FindAnyObjectByType<SentisInferenceRunManager>();
-            while (!sentisInference.IsModelLoaded)
+            // Just wait for WebCamTexture to be ready
+            while (m_webCamTextureManager.WebCamTexture == null)
             {
                 yield return null;
             }
-            m_isSentisReady = true;
         }
 
         private void Update()
@@ -59,7 +63,7 @@ namespace PassthroughCameraSamples.MultiObjectDetection
             if (!m_isStarted)
             {
                 // Manage the Initial Ui Menu
-                if (hasWebCamTextureData && m_isSentisReady)
+                if (hasWebCamTextureData)
                 {
                     m_uiMenuManager.OnInitialMenu(m_environmentRaycast.HasScenePermission());
                     m_isStarted = true;
@@ -70,7 +74,7 @@ namespace PassthroughCameraSamples.MultiObjectDetection
                 // Press A button to spawn 3d markers
                 if (OVRInput.GetUp(m_actionButton) && m_delayPauseBackTime <= 0)
                 {
-                    SpwanCurrentDetectedObjects();
+                    SpawnCurrentDetectedObjects();
                 }
                 // Cooldown for the A button after return from the pause menu
                 m_delayPauseBackTime -= Time.deltaTime;
@@ -81,21 +85,21 @@ namespace PassthroughCameraSamples.MultiObjectDetection
             }
 
             // Not start a sentis inference if the app is paused or we don't have a valid WebCamTexture
-            if (m_isPaused || !hasWebCamTextureData)
+            if (!hasWebCamTextureData)
             {
-                if (m_isPaused)
-                {
-                    // Set the delay time for the A button to return from the pause menu
-                    m_delayPauseBackTime = 0.1f;
-                }
+                // if (m_isPaused)
+                // {
+                //     // Set the delay time for the A button to return from the pause menu
+                //     m_delayPauseBackTime = 0.1f;
+                // }
                 return;
             }
 
             // Run a new inference when the current inference finishes
-            if (!m_runInference.IsRunning())
-            {
-                m_runInference.RunInference(m_webCamTextureManager.WebCamTexture);
-            }
+            // if (!m_runInference.IsRunning())
+            // {
+            //     m_runInference.RunInference(m_webCamTextureManager.WebCamTexture);
+            // }
         }
         #endregion
 
@@ -115,7 +119,7 @@ namespace PassthroughCameraSamples.MultiObjectDetection
         /// <summary>
         /// Spwan 3d markers for the detected objects
         /// </summary>
-        private void SpwanCurrentDetectedObjects()
+        private void SpawnCurrentDetectedObjects()
         {
             var count = 0;
             foreach (var box in m_uiInference.BoxDrawn)
