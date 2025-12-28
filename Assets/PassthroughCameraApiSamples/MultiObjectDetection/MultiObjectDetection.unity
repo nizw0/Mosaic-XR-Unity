@@ -299,13 +299,29 @@ PrefabInstance:
       propertyPath: m_SizeDelta.x
       value: 1280
       objectReference: {fileID: 0}
+    - target: {fileID: 2939839106080616260, guid: 7f200cf01c4fccb40b8f80f0061b7562, type: 3}
+      propertyPath: m_statsUpdateInterval
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 3646498784595741499, guid: 7f200cf01c4fccb40b8f80f0061b7562, type: 3}
       propertyPath: m_image
       value: 
       objectReference: {fileID: 669270208}
     - target: {fileID: 3646498784595741499, guid: 7f200cf01c4fccb40b8f80f0061b7562, type: 3}
+      propertyPath: SIGNALING_URL
+      value: https://192.168.1.101:31000/offer
+      objectReference: {fileID: 0}
+    - target: {fileID: 3646498784595741499, guid: 7f200cf01c4fccb40b8f80f0061b7562, type: 3}
+      propertyPath: SIGNALING_ICE_URL
+      value: https://192.168.1.101:31000/candidate
+      objectReference: {fileID: 0}
+    - target: {fileID: 3646498784595741499, guid: 7f200cf01c4fccb40b8f80f0061b7562, type: 3}
       propertyPath: m_inferenceInterval
       value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3646498784595741499, guid: 7f200cf01c4fccb40b8f80f0061b7562, type: 3}
+      propertyPath: m_enableRttMeasurement
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 3646498784595741499, guid: 7f200cf01c4fccb40b8f80f0061b7562, type: 3}
       propertyPath: m_webCamTextureManager

@@ -222,8 +222,8 @@
       }
     },
     "com.unity.webrtc": {
-      "version": "3.0.0-pre.8",
-      "depth": 1,
+      "version": "3.0.0",
+      "depth": 0,
       "source": "registry",
       "dependencies": {
         "com.unity.modules.audio": "1.0.0",

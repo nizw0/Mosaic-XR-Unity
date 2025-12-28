@@ -55,7 +55,8 @@ namespace PassthroughCameraSamples.MultiObjectDetection
             public string Label;
             public Vector3? WorldPos;
             public string ClassName;
-            public int Confidence;
+            public float Confidence;
+            public int ClassId;
         }
 
         #region Unity Functions
@@ -137,25 +138,27 @@ namespace PassthroughCameraSamples.MultiObjectDetection
 
                     if (detectionStrings.Length > 0)
                     {
-                        var output = new List<float[]>();
-                        var labelIDs = new List<int>();
+                        var detectionResults = new List<DetectionResult>();
 
                         foreach (var detection in detectionStrings)
                         {
                             var result = JsonUtility.FromJson<DetectionResult>(detection);
-                            output.Add(new float[] { result.x, result.y, result.width, result.height });
-                            labelIDs.Add(result.class_id);
+
+                            // Check if classification key exists in the original JSON string
+                            result.hasClassification = detection.Contains("\"classification\":");
+
+                            detectionResults.Add(result);
                         }
 
-                        int rows = output.Count;
+                        int rows = detectionResults.Count;
                         int cols = 4;
                         float[,] outputArray = new float[rows, cols];
                         for (int i = 0; i < rows; i++)
                         {
-                            for (int j = 0; j < cols; j++)
-                            {
-                                outputArray[i, j] = output[i][j];
-                            }
+                            outputArray[i, 0] = detectionResults[i].x;
+                            outputArray[i, 1] = detectionResults[i].y;
+                            outputArray[i, 2] = detectionResults[i].width;
+                            outputArray[i, 3] = detectionResults[i].height;
                         }
 
                         // Draw UI boxes
@@ -174,7 +177,7 @@ namespace PassthroughCameraSamples.MultiObjectDetection
                                 m_autoHideCoroutine = null;
                             }
 
-                            DrawUIBoxes(outputArray, labelIDs.ToArray(), m_displayImage.rectTransform.rect.width, m_displayImage.rectTransform.rect.height);
+                            DrawUIBoxes(outputArray, detectionResults.ToArray(), m_displayImage.rectTransform.rect.width, m_displayImage.rectTransform.rect.height);
                         }
                         else
                         {
@@ -260,7 +263,7 @@ namespace PassthroughCameraSamples.MultiObjectDetection
             m_detectionCanvas.CapturePosition();
         }
 
-        public void DrawUIBoxes(float[,] output, int[] labelIDs, float imageWidth, float imageHeight)
+        public void DrawUIBoxes(float[,] output, DetectionResult[] detectionResults, float imageWidth, float imageHeight)
         {
             Debug.Log($"[WebRTCUI] DrawUIBoxes called with {output.GetLength(0)} detections, imageSize: {imageWidth}x{imageHeight}");
 
@@ -283,9 +286,9 @@ namespace PassthroughCameraSamples.MultiObjectDetection
                 return;
             }
 
-            if (m_labels == null || m_labels.Length == 0)
+            if (detectionResults == null || detectionResults.Length == 0)
             {
-                Debug.LogError("[WebRTCUI] m_labels is null or empty");
+                Debug.LogError("[WebRTCUI] detectionResults is null or empty");
                 return;
             }
 
@@ -325,7 +328,31 @@ namespace PassthroughCameraSamples.MultiObjectDetection
             //Draw the bounding boxes
             for (var n = 0; n < maxBoxes; n++)
             {
-                Debug.Log($"[WebRTCUI] Processing detection {n}: raw coords({output[n, 0]}, {output[n, 1]}, {output[n, 2]}, {output[n, 3]}), class_id: {labelIDs[n]}");
+                var detection = detectionResults[n];
+
+                // Check if classification key exists in JSON and use it if available
+                int finalClassId;
+                string finalClassName;
+                float finalConfidence;
+
+                if (detection.hasClassification && detection.classification != null)
+                {
+                    // Use classification data if key exists and data is available
+                    finalClassId = detection.classification.class_id;
+                    finalClassName = !string.IsNullOrEmpty(detection.classification.class_name) ? detection.classification.class_name : "unknown";
+                    finalConfidence = detection.classification.confidence;
+                    Debug.Log($"[WebRTCUI] Using classification data - class_id: {finalClassId}, class_name: {finalClassName}, confidence: {finalConfidence:F2}");
+                }
+                else
+                {
+                    // Fall back to detection data when classification key doesn't exist
+                    finalClassId = detection.class_id;
+                    finalClassName = !string.IsNullOrEmpty(detection.class_name) ? detection.class_name : "unknown";
+                    finalConfidence = detection.confidence;
+                    Debug.Log($"[WebRTCUI] Using detection data (no classification key or null value) - class_id: {finalClassId}, class_name: {finalClassName}, confidence: {finalConfidence:F2}");
+                }
+
+                Debug.Log($"[WebRTCUI] Processing detection {n}: raw coords({output[n, 0]}, {output[n, 1]}, {output[n, 2]}, {output[n, 3]}), final class_id: {finalClassId}, final class_name: {finalClassName}, final confidence: {finalConfidence:F2}");
 
                 // Get bounding box center coordinates
                 var centerX = output[n, 0] * scaleX - halfWidth;
@@ -335,18 +362,7 @@ namespace PassthroughCameraSamples.MultiObjectDetection
 
                 Debug.Log($"[WebRTCUI] Canvas coords: centerX={centerX}, centerY={centerY}, perX={perX}, perY={perY}");
 
-                // Get object class name
-                string classname = "unknown";
-                if (labelIDs[n] >= 0 && labelIDs[n] < m_labels.Length && !string.IsNullOrEmpty(m_labels[labelIDs[n]]))
-                {
-                    classname = m_labels[labelIDs[n]].Replace(" ", "_");
-                }
-                else
-                {
-                    Debug.LogWarning($"[WebRTCUI] Invalid label ID: {labelIDs[n]}, using 'unknown'");
-                }
-
-                Debug.Log($"[WebRTCUI] Object class: {classname}");
+                Debug.Log($"[WebRTCUI] Object class: {finalClassName}");
 
                 // Get the 3D marker world position using Depth Raycast
                 var centerPixel = new Vector2Int(Mathf.RoundToInt(perX * camRes.x), Mathf.RoundToInt((1.0f - perY) * camRes.y));
@@ -358,11 +374,13 @@ namespace PassthroughCameraSamples.MultiObjectDetection
                 {
                     CenterX = centerX,
                     CenterY = centerY,
-                    ClassName = classname,
+                    ClassName = finalClassName,
                     Width = output[n, 2] * scaleX,
                     Height = output[n, 3] * scaleY,
-                    Label = $"Id: {n} Class: {classname} Center (px): {(int)centerX},{(int)centerY} Center (%): {perX:0.00},{perY:0.00}",
+                    Label = $"{finalClassId}, {finalClassName}, {finalConfidence:F2}",
                     WorldPos = worldPos,
+                    Confidence = finalConfidence,
+                    ClassId = finalClassId,
                 };
 
                 // Add to the list of boxes
@@ -504,6 +522,14 @@ namespace PassthroughCameraSamples.MultiObjectDetection
         #endregion
     }
 
+    [System.Serializable]
+    public class ClassificationResult
+    {
+        public int class_id;
+        public string class_name;
+        public float confidence;
+    }
+
     public class DetectionResult
     {
         public float x;
@@ -512,5 +538,11 @@ namespace PassthroughCameraSamples.MultiObjectDetection
         public float height;
         public float confidence;
         public int class_id;
+        public string class_name;
+        public ClassificationResult classification;
+
+        // Helper field to track if classification key exists in JSON
+        [System.NonSerialized]
+        public bool hasClassification;
     }
 }

@@ -53,7 +53,7 @@ namespace PassthroughCameraSamples.MultiObjectDetection
             Debug.Log($"[WebRTCCanvasUI] Canvas setup - FOV: {horizontalFoVDegrees}°, Width: {newCanvasWidthInMeters}m, Scale: {localScale}, SizeDelta: {cameraCanvasRectTransform.sizeDelta}");
 
             // Add a visible border to help debug canvas position and size
-            CreateCanvasBorder(cameraCanvasRectTransform);
+            // CreateCanvasBorder(cameraCanvasRectTransform);
 
             // Force canvas to be visible and in front of camera
             // ForceCanvasVisible();

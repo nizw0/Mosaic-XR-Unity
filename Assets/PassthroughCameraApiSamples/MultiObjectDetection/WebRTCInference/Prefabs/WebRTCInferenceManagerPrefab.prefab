@@ -84,6 +84,7 @@ GameObject:
   - component: {fileID: 3646498784595741499}
   - component: {fileID: 5770685633180165650}
   - component: {fileID: 7998114026059820840}
+  - component: {fileID: 2939839106080616260}
   m_Layer: 0
   m_Name: WebRTCInferenceManagerPrefab
   m_TagString: Untagged
@@ -121,9 +122,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_webCamTextureManager: {fileID: 0}
   m_image: {fileID: 144095598799144303}
-  m_inferenceInterval: 0.1
   SIGNALING_URL: https://140.113.24.246:8080/offer
   SIGNALING_ICE_URL: https://140.113.24.246:8080/candidate
+  m_enableRttMeasurement: 1
+  m_enablePeriodicInference: 1
+  m_inferenceInterval: 0.5
 --- !u!114 &5770685633180165650
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -147,6 +150,7 @@ MonoBehaviour:
   m_font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
   m_fontColor: {r: 0.36078432, g: 0.99215686, b: 0.60784316, a: 0}
   m_fontSize: 80
+  m_boxAutoHideDelay: 3
   OnObjectsDetected:
     m_PersistentCalls:
       m_Calls: []
@@ -165,6 +169,22 @@ MonoBehaviour:
   m_webCamTextureManager: {fileID: 0}
   m_detectionCanvas: {fileID: 7376517437398570920}
   m_canvasDistance: 1
+--- !u!114 &2939839106080616260
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5228241647023865434}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 512c9bc1ebd77dc409fb1acaa3a9aa03, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_statsUpdateInterval: 1
+  m_enableLogging: 1
+  m_enableServerRttMeasurement: 1
+  m_logServerRttDetails: 1
 --- !u!1 &7376517437398570920
 GameObject:
   m_ObjectHideFlags: 0
