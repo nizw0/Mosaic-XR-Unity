@@ -14,7 +14,10 @@ namespace PassthroughCameraSamples.MultiObjectDetection
         [SerializeField] private WebCamTextureManager m_webCamTextureManager;
         [SerializeField] private RawImage m_image;
         // [SerializeField] private float m_inferenceInterval = 0.5f;
+        [Header("Server Urls")]
+        [Tooltip("Modify IP and port based on your environment, do not change the path")]
         [SerializeField] private string SIGNALING_URL = "https://140.113.24.246:8080/offer";
+        [Tooltip("Modify IP and port based on your environment, do not change the path")]
         [SerializeField] private string SIGNALING_ICE_URL = "https://140.113.24.246:8080/candidate";
         public event Action<byte[]> OnInferenceResultReceived;
         public bool IsConnected => m_peer != null && m_peer.ConnectionState == RTCPeerConnectionState.Connected;
